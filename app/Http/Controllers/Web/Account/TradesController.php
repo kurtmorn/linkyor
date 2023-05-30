@@ -1,11 +1,26 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Http\Controllers\Web\Account;
@@ -25,14 +40,123 @@ class TradesController extends Controller
 {
     public function index(Request $request)
     {
-        return view('web.account.trades.index');
+        switch ($request->category) {
+            case '':
+            case 'incoming':
+                $error = 'You do not have any incoming trades.';
+                $info = Trade::where([
+                    ['receiver_id', '=', Auth::user()->id],
+                    ['status', '=', 'pending']
+                ]);
+                break;
+            case 'sent':
+                $error = 'You have not sent any trades.';
+                $info = Trade::where([
+                    ['sender_id', '=', Auth::user()->id],
+                    ['status', '=', 'pending']
+                ]);
+                break;
+            case 'history':
+                $error = 'You do not have any history.';
+                $info = Trade::where([
+                    ['receiver_id', '=', Auth::user()->id],
+                    ['status', '!=', 'pending']
+                ])->orWhere([
+                    ['sender_id', '=', Auth::user()->id],
+                    ['status', '!=', 'pending']
+                ]);
+                break;
+            default:
+                abort(404);
+        }
+
+        $category = ($request->category == '') ? 'incoming' : $request->category;
+        $trades = $info->orderBy('created_at', 'DESC')->paginate(15);
+
+        return view('web.account.trades.index')->with([
+            'category' => $category,
+            'trades' => $trades,
+            'error' => $error
+        ]);
     }
 
-    public function send($id)
+    public function view($id)
     {
-        $user = User::where('id', '=', $id)->firstOrFail();
+        $trade = Trade::where('id', '=', $id)->firstOrFail();
 
-        if (Auth::user()->id == $user->id || $user->isBanned()) abort(404);
+        if ($trade->receiver->id != Auth::user()->id && $trade->sender->id != Auth::user()->id) abort(404);
+
+        $giving = [];
+        $receiving = [];
+
+        if ($trade->giving_1) {
+            $item = Inventory::where('id', '=', $trade->giving_1)->first()->item;
+            $giving[$trade->giving_1] = $item;
+            $giving[$trade->giving_1]['slug'] = $item->slug();
+            $giving[$trade->giving_1]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->giving_2) {
+            $item = Inventory::where('id', '=', $trade->giving_2)->first()->item;
+            $giving[$trade->giving_2] = $item;
+            $giving[$trade->giving_2]['slug'] = $item->slug();
+            $giving[$trade->giving_2]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->giving_3) {
+            $item = Inventory::where('id', '=', $trade->giving_3)->first()->item;
+            $giving[$trade->giving_3] = $item;
+            $giving[$trade->giving_3]['slug'] = $item->slug();
+            $giving[$trade->giving_3]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->giving_4) {
+            $item = Inventory::where('id', '=', $trade->giving_4)->first()->item;
+            $giving[$trade->giving_4] = $item;
+            $giving[$trade->giving_4]['slug'] = $item->slug();
+            $giving[$trade->giving_4]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->receiving_1) {
+            $item = Inventory::where('id', '=', $trade->receiving_1)->first()->item;
+            $receiving[$trade->receiving_1] = $item;
+            $receiving[$trade->receiving_1]['slug'] = $item->slug();
+            $receiving[$trade->receiving_1]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->receiving_2) {
+            $item = Inventory::where('id', '=', $trade->receiving_2)->first()->item;
+            $receiving[$trade->receiving_2] = $item;
+            $receiving[$trade->receiving_2]['slug'] = $item->slug();
+            $receiving[$trade->receiving_2]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->receiving_3) {
+            $item = Inventory::where('id', '=', $trade->receiving_3)->first()->item;
+            $receiving[$trade->receiving_3] = $item;
+            $receiving[$trade->receiving_3]['slug'] = $item->slug();
+            $receiving[$trade->receiving_3]['thumbnail'] = $item->thumbnail();
+        }
+
+        if ($trade->receiving_4) {
+            $item = Inventory::where('id', '=', $trade->receiving_4)->first()->item;
+            $receiving[$trade->receiving_4] = $item;
+            $receiving[$trade->receiving_4]['slug'] = $item->slug();
+            $receiving[$trade->receiving_4]['thumbnail'] = $item->thumbnail();
+        }
+
+        return view('web.account.trades.view')->with([
+            'trade' => $trade,
+            'giving' => $giving,
+            'receiving' => $receiving
+        ]);
+    }
+
+    public function send($username)
+    {
+        $user = User::where('username', '=', $username)->firstOrFail();
+
+        if (Auth::user()->id == $user->id || $user->isBanned() || !$user->setting->accepts_trades) abort(404);
 
         $giving = $this->inventory(Auth::user()->id);
         $receiving = $this->inventory($user->id);
@@ -50,7 +174,7 @@ class TradesController extends Controller
             case 'send':
                 $user = User::where('id', '=', $request->id);
 
-                if (!$user->exists() || Auth::user()->id == $user->first()->id || $user->first()->isBanned())
+                if (!$user->exists() || Auth::user()->id == $user->first()->id || $user->first()->isBanned() || !$user->first()->setting->accepts_trades)
                     return response()->json(['error' => 'Invalid user.']);
 
                 $user = $user->first();
@@ -71,7 +195,7 @@ class TradesController extends Controller
                     return response()->json(['error' => 'You need to give and request at least one (1) item.']);
 
                 if (($request->gCurrency && !is_numeric($request->gCurrency)) || ($request->rCurrency && !is_numeric($request->rCurrency)))
-                    return response()->json(['error' => 'Invalid bucks amounts.']);
+                    return response()->json(['error' => 'Invalid currency amounts.']);
 
                 foreach ($givingItems as $item) {
                     $item = Inventory::where([
@@ -84,8 +208,8 @@ class TradesController extends Controller
 
                     $item = $item->first()->item;
 
-                    if (!$item->special_type)
-                        return response()->json(['error' => 'One of the giving items is not a special.']);
+                    if (!$item->limited)
+                        return response()->json(['error' => 'One of the giving items is not limited.']);
                 }
 
                 foreach ($receivingItems as $item) {
@@ -99,12 +223,12 @@ class TradesController extends Controller
 
                     $item = $item->first()->item;
 
-                    if (!$item->special_type)
-                        return response()->json(['error' => 'One of the receiving items is not a special.']);
+                    if (!$item->limited)
+                        return response()->json(['error' => 'One of the receiving items is not limited.']);
                 }
 
-                if ($request->gCurrency > Auth::user()->currency_bucks)
-                    return response()->json(['error' => 'You are offering more bucks than you actually have.']);
+                if ($request->gCurrency > Auth::user()->currency)
+                    return response()->json(['error' => 'You are offering more currency than you actually have.']);
 
                 $trade = new Trade;
                 $trade->receiver_id = $user->id;
@@ -121,7 +245,7 @@ class TradesController extends Controller
                 $trade->receiving_currency = $request->rCurrency;
                 $trade->save();
 
-                return response(['url' => route('account.trades.index')]);
+                return response(['url' => route('account.trades.view', $trade->id)]);
             case 'accept':
                 $trade = Trade::where([
                     ['id', '=', $request->id],
@@ -170,15 +294,15 @@ class TradesController extends Controller
                     }
                 }
 
-                if ($trade->giving_currency && $trade->giving_currency > $trade->sender->currency_bucks) {
+                if ($trade->giving_currency && $trade->giving_currency > $trade->sender->currency) {
                     $trade->status = 'declined';
                     $trade->save();
 
-                    return back()->withErrors(['Sender does not have enough bucks so the trade has been declined.']);
+                    return back()->withErrors(['Sender does not have enough currency so the trade has been declined.']);
                 }
 
-                if ($trade->receiving_currency && $trade->receiving_currency > $trade->receiver->currency_bucks)
-                    return back()->withErrors(['You do not have enough bucks.']);
+                if ($trade->receiving_currency && $trade->receiving_currency > $trade->receiver->currency)
+                    return back()->withErrors(['You do not have enough currency.']);
 
                 $trade->status = 'accepted';
                 $trade->save();
@@ -206,18 +330,18 @@ class TradesController extends Controller
                 }
 
                 if ($trade->giving_currency) {
-                    $trade->sender->currency_bucks -= $trade->giving_currency;
+                    $trade->sender->currency -= $trade->giving_currency;
                     $trade->sender->save();
 
-                    $trade->receiver->currency_bucks += $trade->giving_currency;
+                    $trade->receiver->currency += $trade->giving_currency;
                     $trade->receiver->save();
                 }
 
                 if ($trade->receiving_currency) {
-                    $trade->sender->currency_bucks += $trade->receiving_currency;
+                    $trade->sender->currency += $trade->receiving_currency;
                     $trade->sender->save();
 
-                    $trade->receiver->currency_bucks -= $trade->receiving_currency;
+                    $trade->receiver->currency -= $trade->receiving_currency;
                     $trade->receiver->save();
                 }
 
@@ -264,17 +388,10 @@ class TradesController extends Controller
         $user = User::where('id', '=', $id)->first();
 
         $items = Item::where([
-            ['special_type', '!=', null],
+            ['limited', '=', true],
             ['stock', '<=', 0],
             ['public_view', '=', true]
         ])->join('inventories', 'inventories.item_id', '=', 'items.id')->where('inventories.user_id', '=', $user->id)->orderBy('inventories.created_at', 'DESC')->get();
-
-        foreach ($items as $item) {
-            $inventoryItem = Inventory::where('id', '=', $item->id)->first();
-
-            $item->recent_average_price = $inventoryItem->item->recentAveragePrice();
-            $item->serial = $inventoryItem->serial();
-        }
 
         return $items;
     }

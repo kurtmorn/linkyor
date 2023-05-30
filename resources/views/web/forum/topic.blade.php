@@ -1,84 +1,143 @@
 <!--
-**
- * MIT License
- *
- * Copyright (c) 2023 Linkyor
- *
-**
+MIT License
+
+Copyright (c) 2021-2022 FoxxoSnoot
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 -->
 
 @extends('layouts.default', [
     'title' => $topic->name
 ])
 
+@section('css')
+    <style>
+        .thread {
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
+
+        .thread:not(:last-child) {
+            border-bottom: 1px solid var(--divider_color);
+        }
+
+        .thread:hover {
+            background: var(--section_bg_hover);
+        }
+
+        .thread .user-headshot {
+            width: 50px;
+            height: 50px;
+            float: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .thread .user-headshot img {
+            background: var(--headshot_bg);
+            border-radius: 50%;
+        }
+
+        .thread .details {
+            padding-left: 25px;
+        }
+
+        .thread .status {
+            font-size: 11px;
+            border-radius: 4px;
+            margin-top: -2px;
+            margin-right: 5px;
+            padding: 0.5px 5px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .thread .status i {
+            font-size: 10px;
+            vertical-align: middle;
+        }
+
+        .thread .status i.fa-lock {
+            margin-top: -1px;
+        }
+    </style>
+@endsection
+
 @section('content')
-    <div class="col-10-12 push-1-12">
-        <div class="col-8-12">
-            @include('web.forum._header')
-        </div>
-    </div>
-    <div class="col-10-12 push-1-12">
-        @if (Auth::check() && ((Auth::user()->isStaff() && $topic->is_staff_only_posting) || !$topic->is_staff_only_posting))
-            <div class="push-right mobile-col-1-1 pr0">
-                <a href="{{ route('forum.new', ['thread', $topic->id]) }}" class="button small {{ $topic->color() }}">CREATE</a>
-            </div>
-        @endif
-        <div class="forum-bar weight600" style="padding:10px 5px 10px 0;">
-            <a href="{{ route('forum.index') }}">Forum</a>
-            <i class="fa fa-angle-double-right" style="font-size:1rem;" aria-hidden="true"></i>
-            <a href="{{ route('forum.topic', $topic->id) }}">{{ $topic->name }}</a>
-        </div>
-        <div class="card">
-            <div class="top {{ $topic->color() }}">
-                <div class="col-7-12">{{ $topic->name }}</div>
-                <div class="no-mobile overflow-auto topic text-center">
-                    <div class="col-3-12 stat">Replies</div>
-                    <div class="col-3-12 stat">Views</div>
-                    <div class="col-5-12"></div>
-                </div>
-            </div>
-            <div class="content" style="padding: 0px">
-                @forelse ($topic->threads() as $thread)
-                    <div class="hover-card m0 thread-card" style="{{ ($thread->is_deleted) ? 'opacity:.5;' : '' }}">
-                        <div class="col-7-12 topic ellipsis">
-                            @if ($thread->is_pinned)
-                                <span class="thread-label {{ $topic->color() }}">Pinned</span>
-                            @endif
-                            @if ($thread->is_locked)
-                                <span class="thread-label {{ $topic->color() }}">Locked</span>
-                            @endif
-                            <a href="{{ route('forum.thread', $thread->id) }}">
-                                <span class="small-text label dark">{{ $thread->title }}</span>
-                            </a>
-                            <br>
-                            <span class="label smaller-text">By <a href="{{ route('users.profile', $thread->creator->id) }}" class="darkest-gray-text">{{ $thread->creator->username }}</a></span>
-                        </div>
-                        <div class="no-mobile overflow-auto topic">
-                            <div class="col-3-12 pt2 stat center-text">
-                                <span class="title">{{ number_format($thread->replies(false)->count()) }}</span>
-                            </div>
-                            <div class="col-3-12 pt2 stat center-text">
-                                <span class="title">{{ number_format($thread->views ?? 0) }}</span>
-                            </div>
-                            <div class="col-6-12 post ellipsis text-right">
-                                <span class="label dark small-text"></span>
-                                @if ($thread->lastReply())
-                                    <span class="label dark small-text">{{ $thread->lastReply()->created_at->diffForHumans() }}</span>
-                                    <br>
-                                    <span class="label dark-gray-text smaller-text">By <a href="{{ route('users.profile', $thread->lastReply()->creator->username) }}" class="darkest-gray-text">{{ $thread->lastReply()->creator->username }}</a></span>
-                                @else
-                                    <span class="label dark small-text">{{ $thread->created_at->diffForHumans() }}</span>
-                                    <br>
-                                    <span class="label dark-gray-text smaller-text">By <a href="{{ route('users.profile', $thread->creator->username) }}" class="darkest-gray-text">{{ $thread->creator->username }}</a></span>
-                                @endif
-                            </div>
+    <h3>Forum</h3>
+    <ul class="breadcrumb bg-white">
+        <li class="breadcrumb-item"><a href="{{ route('forum.index') }}">Forum</a></li>
+        <li class="breadcrumb-item active">{{ $topic->name }}</li>
+    </ul>
+    <div class="row">
+        @include('web.forum._sidebar', ['mobile' => true])
+        <div class="col-md">
+            @if ($topic->threads()->count() == 0)
+                <p>There are no threads in this topic. Maybe <a href="{{ route('forum.new', ['thread', $topic->id]) }}">create one?</a></p>
+            @else
+                <div class="card">
+                    <div class="card-header bg-primary text-white" style="padding-left:15px;padding-right:15px;">
+                        <div class="row">
+                            <div class="col-md-8">Post</div>
+                            <div class="col-md-2 text-center hide-sm">Replies</div>
+                            <div class="col-md-2 text-center hide-sm">Last Reply</div>
                         </div>
                     </div>
-                @empty
-                    <div style="text-align:center;padding:10px;">Nothing here :(</div>
-                @endforelse
-            </div>
+                    <div class="card-body" style="padding-top:0;padding-left:15px;padding-right:15px;padding-bottom:0;">
+                        @foreach ($topic->threads() as $thread)
+                            <div class="row thread" @if ($thread->is_deleted) style="opacity:.5;" @endif>
+                                <div class="col-md-8">
+                                    <div class="user-headshot">
+                                        <img src="{{ $thread->creator->headshot() }}">
+                                    </div>
+                                    <div class="details text-truncate">
+                                        <a href="{{ route('forum.thread', $thread->id) }}" style="color:inherit;font-size:18px;font-weight:600;text-decoration:none;">{{ $thread->title }}</a>
+                                        <div class="text-muted" style="margin-top:-3px;">
+                                            @if ($thread->is_pinned)
+                                                <span class="status bg-danger text-white"><i class="fas fa-thumbtack mr-1"></i> Pinned</span>
+                                            @elseif ($thread->is_locked)
+                                                <span class="status text-white" style="background:#000;"><i class="fas fa-lock mr-1"></i> Locked</span>
+                                            @endif
+
+                                            <span class="hide-sm">Posted by</span>
+                                            <a href="{{ route('users.profile', $thread->creator->username) }}" @if ($thread->creator->isStaff()) class="text-danger" @endif>{{ $thread->creator->username }}</a>
+                                            <span>- {{ $thread->created_at->diffForHumans() }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 text-center align-self-center hide-sm">{{ number_format($thread->replies(false)->count()) }}</div>
+                                <div class="col-md-2 text-center align-self-center text-truncate hide-sm">
+                                    @if ($thread->lastReply())
+                                        <a href="{{ route('users.profile', $thread->lastReply()->creator->username) }}" @if ($thread->lastReply()->creator->isStaff()) class="text-danger" @endif>{{ $thread->lastReply()->creator->username }}</a>
+                                        <div>{{ $thread->lastReply()->created_at->diffForHumans() }}</div>
+                                    @else
+                                        <a href="{{ route('users.profile', $thread->creator->username) }}" @if ($thread->creator->isStaff()) class="text-danger" @endif>{{ $thread->creator->username }}</a>
+                                        <div>{{ $thread->created_at->diffForHumans() }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                {{ $topic->threads()->onEachSide(1) }}
+            @endif
         </div>
-        <div class="pages {{ $topic->color() }}">{{ $topic->threads()->onEachSide(1) }}</div>
+        @include('web.forum._sidebar', ['mobile' => false])
     </div>
 @endsection

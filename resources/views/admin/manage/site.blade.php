@@ -1,10 +1,25 @@
 <!--
-**
- * MIT License
- *
- * Copyright (c) 2023 Linkyor
- *
-**
+MIT License
+
+Copyright (c) 2021-2022 FoxxoSnoot
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 -->
 
 @extends('layouts.admin', [
@@ -42,7 +57,6 @@
 
 @section('content')
     <div class="card">
-        <div class="card-header">Site Settings</div>
         <div class="card-body">
             <form action="{{ route('admin.manage.site.update') }}" method="POST">
                 @csrf
@@ -58,28 +72,32 @@
                             <label class="form-check-label" for="alert_enabled">Alert Enabled</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="item_purchases_enabled" @if (site_setting('item_purchases_enabled')) checked @endif>
-                            <label class="form-check-label" for="item_purchases_enabled">Item Purchases Enabled</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="item_creation_enabled" @if (site_setting('item_creation_enabled')) checked @endif>
-                            <label class="form-check-label" for="item_creation_enabled">Item Creation Enabled</label>
+                            <input class="form-check-input" type="checkbox" name="catalog_purchases_enabled" @if (site_setting('catalog_purchases_enabled')) checked @endif>
+                            <label class="form-check-label" for="catalog_purchases_enabled">Catalog Purchases Enabled</label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" name="forum_enabled" @if (site_setting('forum_enabled')) checked @endif>
                             <label class="form-check-label" for="forum_enabled">Forum Enabled</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="avatar_editor_enabled" @if (site_setting('avatar_editor_enabled')) checked @endif>
-                            <label class="form-check-label" for="avatar_editor_enabled">Avatar Editor Enabled</label>
+                            <input class="form-check-input" type="checkbox" name="create_enabled" @if (site_setting('create_enabled')) checked @endif>
+                            <label class="form-check-label" for="create_enabled">Create Enabled</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="character_enabled" @if (site_setting('character_enabled')) checked @endif>
+                            <label class="form-check-label" for="character_enabled">Character Editing Enabled</label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" name="trading_enabled" @if (site_setting('trading_enabled')) checked @endif>
                             <label class="form-check-label" for="trading_enabled">Trading Enabled</label>
                         </div>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" name="clans_enabled" @if (site_setting('clans_enabled')) checked @endif>
-                            <label class="form-check-label" for="clans_enabled">Clans Enabled</label>
+                            <input class="form-check-input" type="checkbox" name="groups_enabled" @if (site_setting('groups_enabled')) checked @endif>
+                            <label class="form-check-label" for="groups_enabled">Groups Enabled</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" name="real_life_purchases_enabled" @if (site_setting('real_life_purchases_enabled')) checked @endif>
+                            <label class="form-check-label" for="real_life_purchases_enabled">Real Life Purchases Enabled</label>
                         </div>
                         <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" name="settings_enabled" @if (site_setting('settings_enabled')) checked @endif>
@@ -107,14 +125,18 @@
                     </div>
                     <div class="col-md-4">
                         <strong>Maintenance Passwords</strong>
-                        @forelse ($maintenancePasswords as $maintenancePassword)
-                            <div><small>{{ $maintenancePassword }}</small></div>
-                        @empty
-                            <p>No passwords found.</p>
-                        @endforelse
+                        <div class="card">
+                            <div class="card-body" style="padding:5px;">
+                                @forelse ($maintenancePasswords as $maintenancePassword)
+                                    <div><small>{{ $maintenancePassword }}</small></div>
+                                @empty
+                                    <p>No passwords found.</p>
+                                @endforelse
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <button class="green w-100 mt-1" type="submit">Update</button>
+                <button class="btn btn-block btn-success mt-1" type="submit">Update</button>
             </form>
         </div>
     </div>

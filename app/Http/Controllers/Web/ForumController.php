@@ -1,11 +1,26 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Http\Controllers\Web;
@@ -25,22 +40,36 @@ class ForumController extends Controller
     public function index()
     {
         $topics = ForumTopic::where('is_staff_only_viewing', false)->orderBy('home_page_priority', 'DESC')->get();
-        $recentThreads = ForumThread::where('is_deleted', '=', false)->orderBy('updated_at', 'DESC')->take(5)->get();
 
         if (Auth::check() && Auth::user()->isStaff())
             $topics = ForumTopic::orderBy('home_page_priority', 'DESC')->get();
 
         return view('web.forum.index')->with([
-            'topics' => $topics,
-            'recentThreads' => $recentThreads
+            'topics' => $topics
         ]);
     }
 
-    public function topic($id)
+    public function search(Request $request)
+    {
+        $search = (isset($request->search)) ? trim($request->search) : '';
+
+        if (!empty($search))
+            $threads = ForumThread::where([
+                ['title', 'LIKE', "%{$search}%"],
+                ['is_deleted', '=', false]
+            ])->orderBy('updated_at', 'DESC')->paginate(15);
+
+        return view('web.forum.search')->with([
+            'search' => $search,
+            'threads' => $threads ?? null
+        ]);
+    }
+
+    public function topic($id, $slug)
     {
         $topic = ForumTopic::where('id', '=', $id)->firstOrFail();
 
-        if ((!Auth::check() || !Auth::user()->isStaff()) && $topic->is_staff_only_viewing) abort(403);
+        if ($slug != $topic->slug() || (!Auth::check() || !Auth::user()->isStaff()) && $topic->is_staff_only_viewing) abort(404);
 
         return view('web.forum.topic')->with([
             'topic' => $topic
@@ -51,7 +80,7 @@ class ForumController extends Controller
     {
         $thread = ForumThread::where('id', '=', $id)->firstOrFail();
 
-        if ((!Auth::check() || !Auth::user()->isStaff()) && ($thread->topic->is_staff_only_viewing || $thread->is_deleted)) abort(403);
+        if ((!Auth::check() || !Auth::user()->isStaff()) && ($thread->topic->is_staff_only_viewing || $thread->is_deleted)) abort(404);
 
         return view('web.forum.thread')->with([
             'thread' => $thread
@@ -63,21 +92,21 @@ class ForumController extends Controller
         switch ($type) {
             case 'thread':
                 $topic = ForumTopic::where('id', '=', $id)->firstOrFail();
-                $title = "Create Thread in {$topic->name}";
+                $title = "New Thread in \"{$topic->name}\"";
 
-                if (!Auth::user()->isStaff() && $topic->is_staff_only_posting) abort(403);
+                if (!Auth::user()->isStaff() && $topic->is_staff_only_posting) abort(404);
                 break;
             case 'reply':
                 $thread = ForumThread::where('id', '=', $id)->firstOrFail();
-                $title = "Reply to {$thread->title}";
+                $title = "Reply to \"{$thread->title}\"";
 
-                if (!Auth::user()->isStaff() && ($thread->is_locked || $thread->is_deleted || $thread->topic->is_staff_only_posting)) abort(403);
+                if (!Auth::user()->isStaff() && ($thread->is_locked || $thread->is_deleted || $thread->topic->is_staff_only_posting)) abort(404);
                 break;
             case 'quote':
                 $reply = ForumReply::where('id', '=', $id)->firstOrFail();
-                $title = "Reply to {$reply->thread->title}";
+                $title = "Quote a reply in \"{$reply->thread->title}\"";
 
-                if (!Auth::user()->isStaff() && ($reply->thread->is_locked || $reply->thread->is_deleted || $reply->thread->topic->is_staff_only_posting)) abort(403);
+                if (!Auth::user()->isStaff() && ($reply->thread->is_locked || $reply->thread->is_deleted || $reply->thread->topic->is_staff_only_posting)) abort(404);
                 break;
             default:
                 abort(404);
@@ -87,31 +116,21 @@ class ForumController extends Controller
             'title' => $title,
             'type' => $type,
             'id' => $id,
-            'topic' => $topic ?? $thread->topic ?? $reply->thread->topic,
-            'thread' => $thread ?? $reply->thread ?? null,
             'quote' => $reply ?? null
         ]);
     }
 
     public function create(Request $request)
     {
-        $forumAgeRequirement = config('site.forum_age_requirement');
-
-        if (time() < ((strtotime(Auth::user()->created_at) + (84600 * $forumAgeRequirement)))) {
-            $word = ($forumAgeRequirement == 1) ? 'day' : 'days';
-
-            return back()->withErrors(["Your account must be at least {$forumAgeRequirement} {$word} old to forum."]);
-        }
-
         switch ($request->type) {
             case 'thread':
                 $topic = ForumTopic::where('id', '=', $request->id)->firstOrFail();
 
-                if (!Auth::user()->isStaff() && $topic->is_staff_only_posting) abort(403);
+                if (!Auth::user()->isStaff() && $topic->is_staff_only_posting) abort(404);
 
                 $this->validate($request, [
-                    'title' => ['required', 'max:60'],
-                    'body' => ['required', 'min:3', 'max:3000']
+                    'title' => ['required', 'max:50'],
+                    'body' => ['required', 'min:3', 'max:7500']
                 ]);
 
                 $thread = new ForumThread;
@@ -119,7 +138,6 @@ class ForumController extends Controller
                 $thread->creator_id = Auth::user()->id;
                 $thread->title = $request->title;
                 $thread->body = $request->body;
-                $thread->is_html = Auth::user()->isStaff();
                 $thread->save();
 
                 $wordCount = str_word_count($thread->body);
@@ -131,17 +149,16 @@ class ForumController extends Controller
             case 'reply':
                 $thread = ForumThread::where('id', '=', $request->id)->firstOrFail();
 
-                if (!Auth::user()->isStaff() && ($thread->is_locked || $thread->is_deleted || $thread->topic->is_staff_only_posting)) abort(403);
+                if (!Auth::user()->isStaff() && ($thread->is_locked || $thread->is_deleted || $thread->topic->is_staff_only_posting)) abort(404);
 
                 $this->validate($request, [
-                    'body' => ['required', 'min:3', 'max:3000']
+                    'body' => ['required', 'min:3', 'max:7500']
                 ]);
 
                 $reply = new ForumReply;
                 $reply->thread_id = $thread->id;
                 $reply->creator_id = Auth::user()->id;
                 $reply->body = $request->body;
-                $reply->is_html = Auth::user()->isStaff();
                 $reply->save();
 
                 $thread->updated_at = Carbon::now()->toDateTimeString();
@@ -156,10 +173,10 @@ class ForumController extends Controller
             case 'quote':
                 $reply = ForumReply::where('id', '=', $request->id)->firstOrFail();
 
-                if (!Auth::user()->isStaff() && ($reply->thread->is_locked || $reply->thread->is_deleted || $reply->thread->topic->is_staff_only_posting)) abort(403);
+                if (!Auth::user()->isStaff() && ($reply->thread->is_locked || $reply->thread->is_deleted || $reply->thread->topic->is_staff_only_posting)) abort(404);
 
                 $this->validate($request, [
-                    'body' => ['required', 'min:3', 'max:3000']
+                    'body' => ['required', 'min:3', 'max:7500']
                 ]);
 
                 $quote = new ForumReply;
@@ -167,7 +184,6 @@ class ForumController extends Controller
                 $quote->quote_id = $reply->id;
                 $quote->creator_id = Auth::user()->id;
                 $quote->body = $request->body;
-                $quote->is_html = Auth::user()->isStaff();
                 $quote->save();
 
                 $thread = $reply->thread;
@@ -187,16 +203,16 @@ class ForumController extends Controller
 
     public function edit($type, $id)
     {
-        if (!Auth::user()->staff('can_edit_forum_posts')) abort(403);
+        if (!Auth::user()->staff('can_edit_forum_posts')) abort(404);
 
         switch ($type) {
             case 'thread';
                 $post = ForumThread::where('id', '=', $id)->firstOrFail();
-                $title = "Edit {$post->title}";
+                $title = "Edit \"{$post->title}\"";
                 break;
             case 'reply':
                 $post = ForumReply::where('id', '=', $id)->firstOrFail();
-                $title = "Edit a Reply to {$post->thread->title}";
+                $title = "Edit a Reply to \"{$post->thread->title}\"";
                 break;
             default:
                 abort(404);
@@ -212,7 +228,7 @@ class ForumController extends Controller
 
     public function update(Request $request)
     {
-        if (!Auth::user()->staff('can_edit_forum_posts')) abort(403);
+        if (!Auth::user()->staff('can_edit_forum_posts')) abort(404);
 
         switch ($request->type) {
             case 'thread':
@@ -252,7 +268,7 @@ class ForumController extends Controller
     {
         switch ($action) {
             case 'delete':
-                if (!Auth::user()->staff('can_delete_forum_posts')) abort(403);
+                if (!Auth::user()->staff('can_delete_forum_posts')) abort(404);
 
                 $post = ($type == 'thread') ? ForumThread::where('id', '=', $id)->firstOrFail() : ForumReply::where('id', '=', $id)->firstOrFail();
                 $status = !$post->is_deleted;
@@ -262,7 +278,7 @@ class ForumController extends Controller
 
                 return back()->with('success_message', ($status) ? 'This post has been deleted.' : 'This post has been undeleted.');
             case 'pin':
-                if (!Auth::user()->staff('can_pin_forum_posts') || $type != 'thread') abort(403);
+                if (!Auth::user()->staff('can_pin_forum_posts') || $type != 'thread') abort(404);
 
                 $thread = ForumThread::where('id', '=', $id)->firstOrFail();
                 $status = !$thread->is_pinned;
@@ -272,7 +288,7 @@ class ForumController extends Controller
 
                 return back()->with('success_message', ($status) ? 'This thread has been pinned.' : 'This thread has been unpinned.');
             case 'lock':
-                if (!Auth::user()->staff('can_lock_forum_posts') || $type != 'thread') abort(403);
+                if (!Auth::user()->staff('can_lock_forum_posts') || $type != 'thread') abort(404);
 
                 $thread = ForumThread::where('id', '=', $id)->firstOrFail();
                 $status = !$thread->is_locked;

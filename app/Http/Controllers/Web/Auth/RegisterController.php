@@ -1,11 +1,26 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Http\Controllers\Web\Auth;
@@ -23,22 +38,61 @@ use Illuminate\Http\Request;
 use App\Models\UsernameHistory;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\Admin\Manage\StaffController;
 
 class RegisterController extends Controller
 {
     public function index(Request $request)
     {
-        return view('web.auth.register');
+        $site = config('site.name');
+        $referred = $request->route()->getName() == 'auth.register.referred';
+
+        $title = 'Register';
+        $icon = config('site.icon');
+        $image = asset('img/welcome.png');
+        $text = "One of the many possible avatars on {$site}";
+
+        if ($referred) {
+            $referrer = User::where('referral_code', '=', $request->referralCode);
+
+            if (!$referrer->exists()) abort(404);
+
+            $referrer = $referrer->first();
+            $url = route('users.profile', $referrer->username);
+
+            $title = "{$referrer->username} invited you to join {$site}";
+            $icon = $referrer->headshot();
+            $image = $referrer->thumbnail();
+            $text = "<a href=\"{$url}\">{$referrer->username}</a> invited you to join {$site}";
+            $referralCode = $referrer->referral_code;
+        }
+
+        return view('web.auth.register')->with([
+            'referred' => $referred,
+            'title' => $title,
+            'icon' => $icon,
+            'image' => $image,
+            'text' => $text,
+            'referralCode' => $referralCode ?? ''
+        ]);
     }
 
     public function authenticate(Request $request)
     {
+        $referred = $request->has('referral_code');
+
+        if ($referred) {
+            $referrer = User::where('referral_code', '=', $request->referral_code);
+
+            if (!$referrer->exists()) abort(404);
+
+            $referrer = $referrer->first();
+        }
+
         $emailDomain = substr(strrchr($_POST['email'], '@'), 1);
         $isInUsernameHistory = UsernameHistory::where('username', '=', $request->username)->exists();
         $accountsWithSameIP = RegisterIP::where('ip', '=', $request->ip())->count();
         $validate = [
-            'username' => ['required', 'min:3', 'max:26', 'regex:/\\A[a-z\\d]+(?:[.-][a-z\\d]+)*\\z/i', 'unique:users'],
+            'username' => ['required', 'min:3', 'max:20', 'regex:/\\A[a-z\\d]+(?:[.-][a-z\\d]+)*\\z/i', 'unique:users'],
             'email' => ['required', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', 'min:6', 'max:255']
         ];
@@ -65,8 +119,9 @@ class RegisterController extends Controller
         $user->username = $request->username;
         $user->email = $request->email;
         $user->password = bcrypt($request->password);
-        $user->currency_bits = 100; // Remove later, ok?
         $user->next_currency_payout = Carbon::now()->addHours(24)->toDateTimeString();
+        $user->referral_code = Str::random(50);
+        $user->referrer_id = $referrer->id ?? null;
         $user->save();
 
         $login = new UserLogin;
@@ -83,18 +138,10 @@ class RegisterController extends Controller
         $settings->save();
 
         if ($user->id == 1) {
-            $user->giveAward(3);
-
-            $permissions = StaffController::STAFF_PERMISSIONS;
-
             $staffUser = new StaffUser;
             $staffUser->user_id = $user->id;
             $staffUser->password = bcrypt('password');
-
-            foreach ($permissions as $options)
-                foreach ($options as $option)
-                    $staffUser->$option = true;
-
+            $staffUser->can_manage_staff = true; // So they can give themselves the rest of the permissions
             $staffUser->save();
         }
 

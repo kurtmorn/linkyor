@@ -1,21 +1,33 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Models;
 
 use App\Models\Inventory;
-use App\Models\ItemComment;
-use App\Models\ItemFavorite;
 use App\Models\ItemPurchase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -27,21 +39,19 @@ class Item extends Model
 
     protected $fillable = [
         'creator_id',
+        'creator_type',
         'name',
         'description',
         'type',
         'status',
-        'price_bits',
-        'price_bucks',
-        'special_type',
+        'price',
+        'limited',
         'stock',
         'public_view',
         'onsale',
         'thumbnail_url',
         'filename',
-        'onsale_until',
-        'created_at',
-        'updated_at'
+        'onsale_until'
     ];
 
     protected $casts = [
@@ -50,23 +60,61 @@ class Item extends Model
 
     public function creator()
     {
-        return $this->belongsTo('App\Models\User', 'creator_id');
+        switch ($this->creator_type) {
+            case 'user':
+                return $this->belongsTo('App\Models\User', 'creator_id');
+            case 'group':
+                return $this->belongsTo('App\Models\Group', 'creator_id');
+        }
+    }
+
+    public function creatorUrl()
+    {
+        switch ($this->creator_type) {
+            case 'user':
+                return route('users.profile', $this->creator->username);
+            case 'group':
+                return route('groups.view', [$this->creator->id, $this->creator->slug()]);
+        }
+    }
+
+    public function creatorName()
+    {
+        switch ($this->creator_type) {
+            case 'user':
+                return $this->creator->username;
+            case 'group':
+                return $this->creator->name;
+        }
+    }
+
+    public function creatorImage()
+    {
+        $url = config('site.storage_url');
+
+        switch ($this->creator_type) {
+            case 'user':
+                return $this->creator->headshot();
+            case 'group':
+                return "{$url}/{$this->creator->thumbnail_url}";
+        }
     }
 
     public function thumbnail()
     {
+        if ($this->status != 'approved')
+            return asset("img/{$this->status}.png");
+
         $url = config('site.storage_url');
 
-        if ($this->status != 'approved')
-            return "{$url}/default/{$this->status}.png";
+        return "{$url}/{$this->thumbnail_url}.png";
+    }
 
-        $time = time();
-        $filename = "{$url}/thumbnails/{$this->thumbnail_url}.png";
+    public function slug()
+    {
+        $name = str_replace('-', ' ', $this->name);
 
-        if ($this->thumbnail_url == $this->id)
-            $filename .= "?cb={$time}";
-
-        return $filename;
+        return strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
     }
 
     public function isTimed()
@@ -77,9 +125,6 @@ class Item extends Model
     public function onsale()
     {
         if ($this->onsale_until && strtotime($this->onsale_until) < time())
-            return false;
-
-        if ($this->special_type && $this->stock < 1)
             return false;
 
         return $this->onsale;
@@ -95,57 +140,8 @@ class Item extends Model
         return ItemPurchase::where('item_id', '=', $this->id)->get();
     }
 
-    public function favorites()
-    {
-        return ItemFavorite::where('item_id', '=', $this->id)->get();
-    }
-
     public function resellers()
     {
         return ItemReseller::where('item_id', '=', $this->id)->orderBy('price', 'ASC')->paginate(10);
-    }
-
-    public function comments($hasPagination = true)
-    {
-        if (Auth::check() && Auth::user()->isStaff())
-            $comments = ItemComment::where('item_id', '=', $this->id)->orderBy('created_at', 'DESC');
-        else
-            $comments = ItemComment::where([
-                ['item_id', '=', $this->id],
-                ['is_deleted', '=', false]
-            ])->orderBy('created_at', 'DESC');
-
-        return ($hasPagination) ? $comments->paginate(10) : $comments->get();
-    }
-
-    public function recentAveragePrice()
-    {
-        $purchases = ItemPurchase::where('item_id', '=', $this->id);
-        $average = 0;
-
-        if ($purchases->count() > 0)
-            $average = $purchases->avg('price');
-
-        return (integer) $average;
-    }
-
-    public function scrub($column)
-    {
-        $this->timestamps = false;
-
-        switch ($column) {
-            case 'name':
-            case 'description':
-                $this->$column = '[ Content Removed ]';
-                $this->save();
-                break;
-        }
-    }
-
-    public function notifyWebhooks($isNew)
-    {
-        // fix later
-        // if ($this->public_view)
-            // NotifyWebhooks::dispatch($this->id, $isNew);
     }
 }

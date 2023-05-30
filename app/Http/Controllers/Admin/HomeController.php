@@ -1,17 +1,32 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
@@ -24,10 +39,10 @@ class HomeController extends Controller
             $options[] = [route('admin.create_item.index', 'hat'), 'Create Hat', 'fas fa-hat-cowboy', '#0082ff'];
 
         if ($user->staff('can_create_face_items'))
-            $options[] = [route('admin.create_item.index', 'face'), 'Create Face', 'fas fa-kiss-wink-heart', '#0082ff'];
+            $options[] = [route('admin.create_item.index', 'face'), 'Create Face', 'fas fa-smile', '#0082ff'];
 
-        if ($user->staff('can_create_tool_items'))
-            $options[] = [route('admin.create_item.index', 'tool'), 'Create Tool', 'fas fa-hammer', '#0082ff'];
+        if ($user->staff('can_create_gadget_items'))
+            $options[] = [route('admin.create_item.index', 'gadget'), 'Create Gadget', 'fas fa-hammer', '#0082ff'];
 
         if ($user->staff('can_view_user_info'))
             $options[] = [route('admin.users.index'), 'Users', 'fas fa-user', '#28a745'];

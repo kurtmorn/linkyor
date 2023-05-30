@@ -1,34 +1,45 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Models;
 
 use Carbon\Carbon;
-use App\Models\Clan;
-use App\Models\Game;
+use App\Models\Group;
 use App\Models\Trade;
 use App\Models\Friend;
-use App\Models\Status;
 use App\Models\Message;
 use App\Models\UserBan;
 use App\Models\Purchase;
-use App\Models\ForumView;
 use App\Models\Inventory;
 use App\Models\StaffUser;
-use App\Models\UserAward;
+use App\Models\UserBadge;
 use App\Models\UserLogin;
-use App\Models\ClanMember;
 use App\Models\ForumReply;
 use App\Models\UserAvatar;
 use App\Models\ForumThread;
-use App\Models\ItemFavorite;
+use App\Models\GroupMember;
 use App\Models\ItemReseller;
 use App\Models\UserSettings;
 use App\Models\UsernameHistory;
@@ -46,14 +57,10 @@ class User extends Authenticatable
     protected $fillable = [
         'username',
         'email',
-        'email_verified_at',
         'password',
-        'description',
-        'forum_signature',
-        'currency_bits',
         'next_currency_payout',
-        'created_at',
-        'updated_at'
+        'referral_code',
+        'referrer_id'
     ];
 
     protected $hidden = [
@@ -75,19 +82,6 @@ class User extends Authenticatable
     public function setting()
     {
         return $this->belongsTo('App\Models\UserSettings', 'id');
-    }
-
-    public function thumbnail()
-    {
-        $url = config('site.storage_url');
-        $time = time();
-        $image = ($this->avatar()->image == 'default') ? config('site.renderer.default_filename') : $this->avatar()->image;
-        $filename = "{$url}/thumbnails/{$image}.png";
-
-        if ($image == $this->id)
-            $filename .= "?cb={$time}";
-
-        return $filename;
     }
 
     public function online()
@@ -146,24 +140,18 @@ class User extends Authenticatable
             $column = 'hat_2';
         else if ($avatar->hat_3 == $id)
             $column = 'hat_3';
-        else if ($avatar->hat_4 == $id)
-            $column = 'hat_4';
-        else if ($avatar->hat_5 == $id)
-            $column = 'hat_5';
         else if ($avatar->head == $id)
             $column = 'head';
         else if ($avatar->face == $id)
             $column = 'face';
-        else if ($avatar->tool == $id)
-            $column = 'tool';
+        else if ($avatar->gadget == $id)
+            $column = 'gadget';
         else if ($avatar->tshirt == $id)
             $column = 'tshirt';
         else if ($avatar->shirt == $id)
             $column = 'shirt';
         else if ($avatar->pants == $id)
             $column = 'pants';
-        else if ($avatar->figure == $id)
-            $column = 'figure';
         else
             return false;
 
@@ -185,16 +173,14 @@ class User extends Authenticatable
             $column = 'head';
         else if ($avatar->face == $id)
             $column = 'face';
-        else if ($avatar->tool == $id)
-            $column = 'tool';
+        else if ($avatar->gadget == $id)
+            $column = 'gadget';
         else if ($avatar->tshirt == $id)
             $column = 'tshirt';
         else if ($avatar->shirt == $id)
             $column = 'shirt';
         else if ($avatar->pants == $id)
             $column = 'pants';
-        else if ($avatar->figure == $id)
-            $column = 'figure';
         else
             return false;
 
@@ -211,21 +197,6 @@ class User extends Authenticatable
             $total += (int) $purchase->cost;
 
         return $total;
-    }
-
-    public function status()
-    {
-        $status = Status::where('creator_id', '=', $this->id)->orderBy('created_at', 'DESC')->first();
-
-        return $status->message ?? null;
-    }
-
-    public function hasSeenForumThread($id)
-    {
-        return ForumView::where([
-            ['user_id', '=', $this->id],
-            ['thread_id', '=', $id]
-        ])->exists();
     }
 
     /**
@@ -312,28 +283,29 @@ class User extends Authenticatable
         return $log->ip;
     }
 
-    public function accountsLinkedByIP()
+    /**
+     * Images
+     */
+
+    public function thumbnail()
     {
-        $log = UserLogin::where('user_id', '!=', $this->id)->whereIn('ip', $this->ips())->get();
-        $users = [];
-        $times = [];
+        $url = config('site.storage_url');
+        $image = ($this->avatar()->image == 'default') ? config('site.renderer.default_filename') : $this->avatar()->image;
 
-        foreach ($log as $l) {
-            if (!isset($times[$l->user_id]))
-                $times[$l->user_id] = 0;
+        return "{$url}/{$image}.png";
+    }
 
-            $times[$l->user_id]++;
+    public function headshot()
+    {
+        $url = config('site.storage_url');
+        $thumbnail = config('site.official_thumbnail');
 
-            if (!in_array($l->user_id, $users))
-                $users[] = $l->user_id;
-        }
+        if ($this->id == 1 && $thumbnail)
+            return $thumbnail;
 
-        $accounts = User::whereIn('id', $users)->get();
+        $image = ($this->avatar()->image == 'default') ? config('site.renderer.default_filename') : $this->avatar()->image;
 
-        foreach ($accounts as $account)
-            $account->times_linked = $times[$account->id];
-
-        return $accounts;
+        return "{$url}/{$image}_headshot.png";
     }
 
     /**
@@ -373,16 +345,9 @@ class User extends Authenticatable
         ])->exists();
     }
 
-    public function hasFavoritedItem($id)
-    {
-        return ItemFavorite::where([
-            ['item_id', '=', $id],
-            ['user_id', '=', $this->id]
-        ])->exists();
-    }
-
     public function resellableCopiesOfItem($id)
     {
+        $i = 1;
         $resellableCopies = [];
         $copies = Inventory::where([
             ['user_id', '=', $this->id],
@@ -393,125 +358,116 @@ class User extends Authenticatable
             $isReselling = ItemReseller::where('inventory_id', '=', $copy->id)->exists();
 
             if (!$isReselling) {
-                $copy->serial = $copy->serial();
+                $copy->number = $i;
                 $resellableCopies[] = $copy;
+                $i++;
             }
         }
 
         return $resellableCopies;
     }
 
-    /**
-     * Games
-     */
-
-    public function games()
+    public function canEditItem($id)
     {
-        $games = Game::where('creator_id', '=', $this->id)->get();
+        $item = Item::where('id', '=', $id)->first();
 
-        return $games;
-    }
-
-    public function gameLaunch($id, $type, $withProtocol = true)
-    {
-        $protocol = ($withProtocol) ? 'bldn:' : '';
-
-        return $protocol . game_launch("{$this->id}hahaboop-{$id}-{$type}");
+        return ($item->creator_type == 'user' && $this->id == $item->creator->id) || ($item->creator_type == 'group' && $this->id == $item->creator->owner_id);
     }
 
     /**
-     * Clans
+     * Groups
      */
 
-    public function clans()
+    public function groups()
     {
-        $members = ClanMember::where('user_id', '=', $this->id)->get();
-        $clans = [];
+        $members = GroupMember::where('user_id', '=', $this->id)->get();
+        $groups = [];
 
         foreach ($members as $member)
-            $clans[] = $member->clan->id;
+            $groups[] = $member->group->id;
 
-        return Clan::whereIn('id', $clans)->get();
+        return Group::whereIn('id', $groups)->get();
     }
 
-    public function hasPrimaryClan()
+    public function hasPrimaryGroup()
     {
-        return !empty($this->primary_clan_id) && $this->isInClan($this->primary_clan_id);
+        return !empty($this->primary_group_id);
     }
 
-    public function primaryClan()
+    public function primaryGroup()
     {
-        return $this->belongsTo('App\Models\Clan', 'primary_clan_id');
+        return $this->belongsTo('App\Models\Group', 'primary_group_id');
     }
 
-    public function isInClan($id)
+    public function isInGroup($groupId)
     {
-        return ClanMember::where([
+        return GroupMember::where([
             ['user_id', '=', $this->id],
-            ['clan_id', '=', $id]
+            ['group_id', '=', $groupId]
         ])->exists();
     }
 
-    public function rankInClan($id)
+    public function rankInGroup($groupId)
     {
-        return ClanMember::where([
+        return GroupMember::where([
             ['user_id', '=', $this->id],
-            ['clan_id', '=', $id]
+            ['group_id', '=', $groupId]
         ])->first()->rank();
     }
 
-    public function reachedClanLimit()
+    public function reachedGroupLimit()
     {
-        $count = ClanMember::where('user_id', '=', $this->id)->count();
+        $count = GroupMember::where('user_id', '=', $this->id)->count();
+        $limit = (!$this->hasMembership()) ? config('site.group_limit') : config('site.group_limit_membership');
 
-        return $count >= 10;
+        return $count >= $limit;
     }
 
     /**
-     * Awards
+     * Badges
      */
 
-    public function awards()
+    public function badges()
     {
-        $awards = UserAward::where('user_id', '=', $this->id)->get();
+        $badges = UserBadge::where('user_id', '=', $this->id)->get();
         $array = [];
 
-        foreach ($awards as $award) {
-            $data = config('awards')[$award->award_id];
+        foreach ($badges as $badge) {
+            $data = config('badges')[$badge->badge_id];
 
-            $award = new \stdClass;
-            $award->name = $data['name'];
-            $award->description = $data['description'];
-            $award->image = $data['image'];
+            $badge = new \stdClass;
+            $badge->name = $data['name'];
+            $badge->description = $data['description'];
+            $badge->image = asset("img/badges/{$data['image']}.png");
 
-            $array[] = $award;
+            $array[] = $badge;
         }
 
         return $array;
     }
 
-    public function ownsAward($id)
+    public function ownsBadge($id)
     {
-        return UserAward::where([
+        return UserBadge::where([
             ['user_id', '=', $this->id],
-            ['award_id', '=', $id]
+            ['badge_id', '=', $id]
         ])->exists();
     }
 
-    public function giveAward($id, $granter = null)
+    public function giveBadge($id, $granter = null)
     {
-        $badge = new UserAward;
+        $badge = new UserBadge;
         $badge->user_id = $this->id;
         $badge->granter_id = $granter;
-        $badge->award_id = $id;
+        $badge->badge_id = $id;
         $badge->save();
     }
 
-    public function removeAward($id)
+    public function removeBadge($id)
     {
-        return UserAward::where([
+        return UserBadge::where([
             ['user_id', '=', $this->id],
-            ['award_id', '=', $id]
+            ['badge_id', '=', $id]
         ])->delete();
     }
 
@@ -573,17 +529,6 @@ class User extends Authenticatable
         ])->count();
     }
 
-    public function visitCount()
-    {
-        $visits = 0;
-        $games = $this->games();
-
-        foreach ($games as $game)
-            $visits += $game->visits;
-
-        return $visits;
-    }
-
     /**
      * Moderation
      */
@@ -594,7 +539,46 @@ class User extends Authenticatable
 
         switch ($column) {
             case 'username':
-                $this->username = "[Deleted{$this->id}]";
+                $contentId = mt_rand(100000, 999999);
+
+                $colors = [
+                    'Red',
+                    'Blue',
+                    'Green',
+                    'Black',
+                    'White',
+                    'Yellow',
+                    'Orange',
+                    'Pink'
+                ];
+
+                $animals = [
+                    'Puppy',
+                    'Giraffe',
+                    'Zebra',
+                    'Kitten',
+                    'Tiger',
+                    'Lion',
+                    'Unicorn',
+                    'Dolphin',
+                    'Shark',
+                    'Whale',
+                    'Snake',
+                    'Dinosaur',
+                    'Fish',
+                    'Eagle',
+                    'Rooster',
+                    'Wolf',
+                    'Hippo',
+                    'Horse',
+                    'Turtle',
+                    'Squirrel'
+                ];
+
+                shuffle($colors);
+                shuffle($animals);
+
+                $this->$column = $colors[0] . $animals[0] . $contentId;
                 $this->save();
                 break;
             case 'description':

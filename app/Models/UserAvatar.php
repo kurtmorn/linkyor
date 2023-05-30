@@ -1,11 +1,26 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Models;
@@ -37,9 +52,9 @@ class UserAvatar extends Model
         return Item::where('id', '=', $this->face)->first();
     }
 
-    public function tool()
+    public function gadget()
     {
-        return Item::where('id', '=', $this->tool)->first();
+        return Item::where('id', '=', $this->gadget)->first();
     }
 
     public function tshirt()
@@ -57,16 +72,6 @@ class UserAvatar extends Model
         return Item::where('id', '=', $this->pants)->first();
     }
 
-    public function head()
-    {
-        return Item::where('id', '=', $this->head)->first();
-    }
-
-    public function figure()
-    {
-        return Item::where('id', '=', $this->figure)->first();
-    }
-
     public function reset()
     {
         $thumbnail = "thumbnails/{$this->image}.png";
@@ -77,21 +82,18 @@ class UserAvatar extends Model
         $this->hat_1 = null;
         $this->hat_2 = null;
         $this->hat_3 = null;
-        $this->hat_4 = null;
-        $this->hat_5 = null;
         $this->head = null;
         $this->face = null;
-        $this->tool = null;
+        $this->gadget = null;
         $this->tshirt = null;
         $this->shirt = null;
         $this->pants = null;
-        $this->angle = 'right';
-        $this->color_head = '#f3b700';
-        $this->color_torso = '#1c4399';
-        $this->color_left_arm = '#f3b700';
-        $this->color_right_arm = '#f3b700';
-        $this->color_left_leg = '#85ad00';
-        $this->color_right_leg = '#85ad00';
+        $this->color_head = '#d3d3d3';
+        $this->color_torso = '#d3d3d3';
+        $this->color_left_arm = '#d3d3d3';
+        $this->color_right_arm = '#d3d3d3';
+        $this->color_left_leg = '#d3d3d3';
+        $this->color_right_leg = '#d3d3d3';
         $this->save();
 
         if (Storage::exists($thumbnail))

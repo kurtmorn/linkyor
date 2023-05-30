@@ -2,46 +2,86 @@
 /**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 return [
-    'name' => env('APP_NAME', 'PlanetRune'),
-    'logo' => '/images/logos/bh_small.png',
-    'icon' => '/images/logos/bh_icon.png',
-    'theme_color' => '#00A9fe',
+    'name' => env('APP_NAME', 'Laravel Roblox Clone'),
+    'logo' => '/img/logo.png',
+    'icon' => '/img/icon.png',
+
+    'paypal_email' => 'email@gmail.com',
+    'paypal_sandbox' => false,
 
     'route_domains' => [
-        'main_site' => 'www.planetrune.com',
-        'admin_site' => 'panel.planetrune.com'
+        'admin_site' => 'panel.domain.com',
+        'main_site' => 'www.domain.com'
     ],
 
-    'storage_url' => 'http://cdn.planetrune.com',
-    'discord_url' => 'https://discord.gg/planetrune',
+    'storage_url' => 'http://cdn.domain.com',
+    'referral_url' => 'https://refer.domain.com',
 
-    'system_user_id' => 1,
-    'event_enabled' => false,
-    'news_topic_id' => 1,
-    'rules_thread_id' => null,
-    'saint_item_id' => 10,
+    'official_thumbnail' => '/img/icon.png', // Headshot for the system account (ID 1)
+
+    'updates_forum_topic_id' => 1,
 
     'username_change_price' => 250,
-    'clan_creation_price' => 25,
+    'group_creation_price' => 50,
 
-    'flood_time' => 5,
-    'forum_age_requirement' => 0,
-    'message_age_requirement' => 0,
+    'flood_time' => 15,
+
+    'daily_currency' => 10,
+    'daily_currency_membership' => 25,
+    'group_limit' => 10,
+    'group_limit_membership' => 25,
+
+    'donator_item_id' => 0,
+    'membership_item_id' => 0,
+    'email_verification_item_id' => 0,
+    'fake_admin_item_id' => 0, // Granted to those who visit "/admin", leave as 0 if none
+
+    'membership_name' => 'Gold',
+    'membership_color' => '#000',
+    'membership_bg_color' => '#ffc113',
 
     'renderer' => [
-        'url' => 'http://renderer.planetrune.com',
-        'key' => 'key',
-        'default_filename' => 'user'
+        'url' => 'https://renderer.domain.com',
+        'key' => 'secretkey',
+        'default_filename' => 'user', // Default thumbnail filename
+        'previews_enabled' => true
     ],
 
-    'admin_panel_code' => '',
-    'auth_code' => '298w2w2w2wygvsbnjisu26s2sty2s2hst2s',
+    'socials' => [
+        'discord' => '',
+        'twitter' => ''
+    ],
+
+    'admin_panel_code' => '', // A second layer of protection to the administration panel required to login, leave empty if you do not want one
     'maintenance_passwords' => [
-        'newmaintenancekeygetfucked'
-    ]
+        'key'
+    ],
+
+    'catalog_recent_item_types' => ['hat', 'face', 'gadget'],
+    'catalog_item_types' => ['hat', 'face', 'gadget', 'shirt', 'pants'],
+    'inventory_item_types' => ['hat', 'face', 'gadget', 'shirt', 'pants'],
+    'character_editor_item_types' => ['hat', 'face', 'gadget', 'shirt', 'pants'],
+    'item_thumbnails_with_padding' => ['hat', 'face', 'gadget', 'shirt', 'pants']
 ];

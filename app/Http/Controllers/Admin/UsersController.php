@@ -1,11 +1,26 @@
 <?php
 /**
-**
  * MIT License
  *
- * Copyright (c) 2023 Linkyor
+ * Copyright (c) 2021-2022 FoxxoSnoot
  *
-**
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 namespace App\Http\Controllers\Admin;
@@ -77,22 +92,22 @@ class UsersController extends Controller
 
                 return back()->with('success_message', "User password has been changed to <strong>{$password}</strong>.");
             case 'ip_ban':
-                $ipBans = IPBan::where('unbanner_id', '=', null)->whereIn('ip', $user->ips())->get();
+                $ipBans = IPBan::where('unbanned_id', '=', null)->whereIn('ip', $user->ips())->get();
                 $ipBanned = $ipBans->count() > 0;
                 $message = 'User has been IP banned.';
 
                 if ($ipBanned) {
                     $message = 'User is no longer IP banned.';
 
-                    if (!staffUser()->staff('can_ip_unban_users')) abort(404);
+                    foreach ($user->ips() as $ip)
+                        $exists = IPBan::where('ip', '=', $ip)->exists();
 
-                    foreach ($ipBans as $ipBan) {
-                        $ipBan->unbanner_id = staffUser()->id;
-                        $ipBan->save();
-                    }
+                        if ($exists) {
+                            $ipBan = IPBan::where('ip', '=', $ip)->first();
+                            $ipBan->unbanner_id = staffUser()->id;
+                            $ipBan->save();
+                        }
                 } else {
-                    if (!staffUser()->staff('can_ip_ban_users')) abort(404);
-
                     foreach ($user->ips() as $ip) {
                         $ipBan = new IPBan;
                         $ipBan->banner_id = staffUser()->id;
@@ -121,6 +136,7 @@ class UsersController extends Controller
 
                 $user->membership_until = null;
                 $user->save();
+                $user->removeBadge(9);
 
                 return back()->with('success_message', 'User membership has been removed.');
             case 'grant_membership':
@@ -150,6 +166,18 @@ class UsersController extends Controller
 
                 $user->membership_until = Carbon::now()->addMonths($months)->toDateTimeString();
                 $user->save();
+                $user->giveBadge(9);
+
+                if (config('site.membership_item_id')) {
+                    $owns = $user->ownsItem(config('site.membership_item_id'));
+
+                    if (!$owns) {
+                        $inventory = new Inventory;
+                        $inventory->user_id = $user->id;
+                        $inventory->item_id = config('site.membership_item_id');
+                        $inventory->save();
+                    }
+                }
 
                 return back()->with('success_message', "User has been granted {$time} worth of membership.");
             case 'regen':

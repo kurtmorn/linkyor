@@ -1,10 +1,25 @@
 <!--
-**
- * MIT License
- *
- * Copyright (c) 2023 Linkyor
- *
-**
+MIT License
+
+Copyright (c) 2021-2022 FoxxoSnoot
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 -->
 
 @extends('layouts.admin', [
@@ -20,9 +35,6 @@
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('admin.asset_approval.index', 'logos') }}" class="nav-link @if ($category == 'logos') active @endif">Logos ({{ number_format($totalLogos) }})</a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('admin.asset_approval.index', 'thumbnails') }}" class="nav-link @if ($category == 'thumbnails') active @endif">Thumbnails ({{ number_format($totalThumbnails) }})</a>
                 </li>
             </ul>
         </div>
@@ -55,10 +67,10 @@
                             <input type="hidden" name="type" value="{{ $type }}">
                             <div class="row">
                                 <div class="col">
-                                    <button class="green w-100" name="action" value="approve"><i class="fas fa-check"></i></button>
+                                    <button class="btn btn-block btn-success" name="action" value="approve"><i class="fas fa-check"></i></button>
                                 </div>
                                 <div class="col">
-                                    <button class="red w-100" name="action" value="deny"><i class="fas fa-times"></i></button>
+                                    <button class="btn btn-block btn-danger" name="action" value="deny"><i class="fas fa-times"></i></button>
                                 </div>
                             </div>
                         </form>
@@ -69,5 +81,5 @@
             <div class="col">There are currently no pending {{ $category }}.</div>
         @endforelse
     </div>
-    <div class="pages">{{ $assets->onEachSide(1) }}</div>
+    {{ $assets->onEachSide(1) }}
 @endsection
